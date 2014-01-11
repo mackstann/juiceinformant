@@ -1,0 +1,73 @@
+SETUP
+
+On your RPi, install libraries:
+
+$ sudo apt-get install python-virtualenv # or equivalent for your distro
+$ virtualenv env
+$ source env/bin/activate
+$ pip install -r requirements.txt
+
+Now create a file in this project directory, called "secret", and type some
+gibberish into it. This is the password that prevents anyone from submitting
+bogus data to your server.
+
+Copy the project to your server:
+
+$ rsync -va ./ user@server:juiceinformant/ --exclude=env
+
+Install libraries on the server:
+
+$ ssh user@server
+$ cd juiceinformant
+$ sudo apt-get install python-virtualenv # or equivalent for your distro
+$ virtualenv env
+$ source env/bin/activate
+$ pip install -r requirements.txt
+
+Now install redis on the server and start it up.
+
+Start up the Flask server script:
+
+$ python juiceinformant.py
+
+This will run on port 5000 by default. Edit the "app.run" line at the end of
+juiceinformant.py to change this.
+
+Back on the RPi, start up the hardware monitoring script:
+
+$ python hwmon.py
+
+This is now logging to a file called blink-log. The other script to run on the
+local machine will read from this log file and continually try to send updates
+to the remote server:
+
+$ tail -n1000000000 -f blink-log | python push.py webserverhost:5000
+
+It should say stuff like this:
+
+Sent batch[1]: 1381518599.379515...1381518599.379515
+
+It may also complain with error messages if it can't connect, or the server is
+giving it an unexpected response, etc. You can just leave it running and it'll
+recover once the problems are resolved.
+
+You can delete and re-build the Redis database trivially; just restart push.py
+and it'll push all the old log data. However, the blink-log file is
+irreplaceable. It is the canonical place where the log data lives. If you want
+to have a backup of your data, then backup blink-log.
+
+A REMINDER
+
+Don't forget that to run any of the above Python scripts, you must first be in
+the "juiceinformant" directory, and then run "source env/bin/activate".
+
+EXERCISES LEFT FOR THE READER
+
+You will want to set up all of these scripts to run at boot.
+
+The log file will grow up to maybe a hundred MB per year depending on your
+electricity usage. After a long time it might become a disk space hog,
+depending on how much space you have available. (The Redis instance on the
+remote server doesn't grow appreciably after the first week, as it only retains
+a very compact summary of daily use past 7 days. [This is what you see in the
+calendar chart.])
