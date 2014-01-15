@@ -7,11 +7,18 @@ Don't forget, for future reference, that to run any of the Python scripts
 (juiceinformant.py, hwmon.py, push.py), you must first be in the
 "juiceinformant" directory.
 
-If you want to use a virtualenv (you'll know if this is you), go ahead.
+If you want to use a virtualenv (you'll know if this is you), go ahead, but
+make sure to use --system-site-packages so smbus works, or compile smbus-cffi
+into your virtualenv.
 
 On your RPi, install libraries:
 
+$ sudo apt-get install python-smbus
 $ pip install -r requirements.txt
+$ wget https://raw.github.com/seanbechhofer/raspberrypi/master/python/TSL2561.py
+
+(TSL2561.py has no proper license declaration, so I did not want to include it
+in my repository.)
 
 Now create a file in this project directory, called "secret", and type some
 gibberish into it. This is the password that prevents anyone from submitting
