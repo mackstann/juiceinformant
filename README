@@ -40,7 +40,7 @@ $ python juiceinformant.py
 This will run on port 5000 by default. Edit the "app.run" line at the end of
 juiceinformant.py to change this.
 
-Back on the RPi, start up the hardware monitoring script:
+Back on the RPi, start up the hardware monitoring script as root:
 
 $ python hwmon.py
 
