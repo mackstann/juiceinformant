@@ -94,11 +94,11 @@ var day = d3.time.format("%w"),
     format = d3.time.format("%Y-%m-%d");
 
 var color = d3.scale.quantize()
-    .domain([200000, 1500000])
+    .domain([10000, 85000])
     .range(d3.range(4).map(function(d) { return "q" + d + "-11"; }));
 
 var svg = d3.select("#calendar").selectAll("svg")
-    .data(d3.range(2013, (new Date()).getFullYear()+1))
+    .data(d3.range(2014, (new Date()).getFullYear()+1))
   .enter().append("svg")
     .attr("width", width)
     .attr("height", height)
@@ -130,16 +130,16 @@ svg.selectAll(".month")
     .attr("class", "month")
     .attr("d", monthPath);
 
-d3.csv("/logdata/calendar", function(csv, error) {
+d3.csv("/logdata/calendar").get(function(error, rows) {
   var data = d3.nest()
     .key(function(d) { return d.Date; })
     .rollup(function(d) { return d[0].Wh; })
-    .map(csv);
+    .map(rows);
 
   var month_kwh = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
   rect.filter(function(d) { return d in data; })
-      .attr("class", function(d) { return "day " + color(data[d]); })
+    .attr("class", function(d) { return "day " + color(data[d]); })
     .select("title")
     .text(function(d) {
         var parts = d.split('-');
