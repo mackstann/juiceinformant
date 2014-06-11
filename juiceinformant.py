@@ -5,8 +5,10 @@ from util import get_local_datetime_from_timestamp, format
 
 import os, datetime, hashlib, itertools
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='')
 redis = StrictRedis()
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
 
 with open(os.path.dirname(os.path.abspath(__file__)) + '/secret') as f:
     secret = f.read().strip()
@@ -14,6 +16,10 @@ with open(os.path.dirname(os.path.abspath(__file__)) + '/secret') as f:
 @app.route("/", methods=["GET"])
 def index():
     return file('index.html').read()
+
+@app.route('/static/<path:filename>')
+def static_file(filename):
+    return app.send_from_directory(base_dir + '/static', filename)
 
 @app.route("/logdata/latest-entry", methods=["GET"])
 def latest_entry():
