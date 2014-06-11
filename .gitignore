@@ -1,3 +1,5 @@
 secret
 replication-position
 blink-log
+*.pyc
+env
