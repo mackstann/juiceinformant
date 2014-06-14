@@ -2,16 +2,9 @@
 
 # Copyright (c) 2012-2013 Limor Fried, Kevin Townsend and Mikey Sklar for
 # Adafruit Industries. All rights reserved.
-<<<<<<< HEAD
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-=======
 # 
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
->>>>>>> 21ff410eb8d1aafb6f35cd79d62d09501cf01667
 # * Redistributions of source code must retain the above copyright notice, this
 #   list of conditions and the following disclaimer.
 # * Redistributions in binary form must reproduce the above copyright notice,
@@ -20,11 +13,7 @@
 # * Neither the name of the nor the names of its contributors may be used to
 #   endorse or promote products derived from this software without specific
 #   prior written permission.
-<<<<<<< HEAD
 #
-=======
-# 
->>>>>>> 21ff410eb8d1aafb6f35cd79d62d09501cf01667
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -36,12 +25,9 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-<<<<<<< HEAD
 # This module is copied from the Adafruit Github repo:
 # https://github.com/adafruit/Adafruit-Raspberry-Pi-Python-Code/blob/master/Adafruit_I2C/Adafruit_I2C.py
 
-=======
->>>>>>> 21ff410eb8d1aafb6f35cd79d62d09501cf01667
 import smbus
 
 # ===========================================================================
