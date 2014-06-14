@@ -1,5 +1,5 @@
 from redis import StrictRedis
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 
 from util import get_local_datetime_from_timestamp, format
 
@@ -19,7 +19,7 @@ def index():
 
 @app.route('/static/<path:filename>')
 def static_file(filename):
-    return app.send_from_directory(base_dir + '/static', filename)
+    return send_from_directory(base_dir + '/static', filename)
 
 @app.route("/logdata/latest-entry", methods=["GET"])
 def latest_entry():
