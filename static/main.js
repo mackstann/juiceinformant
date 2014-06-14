@@ -6,7 +6,7 @@ function horizon(name, seconds, height, selector)
 
     var context = cubism.context()
         .serverDelay(1 * 1000)
-        .clientDelay(0.1 * 1000)
+        .clientDelay(1 * 1000)
         .step((seconds*1000) / 1000) // ms per x-axis pixel
         .size(document.body.offsetWidth); // width in pixels
 
