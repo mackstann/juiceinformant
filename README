@@ -1,3 +1,8 @@
+NOTE
+
+This project is still under development and is not ready to use unless you're
+prepared to work through some bugs. It's useable, if you're brave.
+
 SETUP
 
 These instructions refer to the Raspberry Pi and your web server as two
@@ -24,6 +29,12 @@ Setup i2c on the RPi:
 
 https://learn.adafruit.com/adafruits-raspberry-pi-lesson-4-gpio-setup/configuring-i2c
 
+Make i2c accessible without using root:
+sudo chmod a+rw /dev/i2c-*
+sudo crontab -e
+@reboot chmod a+rw /dev/i2c-*
+Save and quit.
+
 Now create a file in this project directory, called "secret", and type some
 gibberish into it. This is the password that prevents anyone from submitting
 bogus data to your server.
@@ -33,18 +44,21 @@ install libraries on it:
 
 $ rsync -va ./ user@server:juiceinformant/
 $ ssh user@webserverhost
+$ sudo apt-get install build-essential python-dev
+
+If using virtualenv, activate your env, then:
 $ pip install -r requirements.txt
+
+If not using virtualenv:
+$ sudo pip install -r requirements.txt
 
 Now install redis on the web server and start it up.
 
 $ sudo apt-get install redis-server
 
-Start up the Flask server script on the web server:
+Start up the Flask/uwsgi server on the web server:
 
-$ python juiceinformant.py
-
-This will run on port 5000 by default. Edit the "app.run" line at the end of
-juiceinformant.py to change this.
+$ uwsgi --http 0.0.0.0:5000 --master -w juiceinformant:app --processes 4
 
 Back on the RPi, start up the hardware monitoring script as root:
 
@@ -54,7 +68,7 @@ This is now logging to a file called blink-log. The other script to run on the
 RPi will read from this log file and continually try to send updates to the
 web server:
 
-$ tail -n1000000000 -f blink-log | python push.py localhost:5000
+$ python push.py localhost:5000
 
 It should say stuff like this:
 
