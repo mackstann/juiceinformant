@@ -79,9 +79,7 @@ def spike_range(ir):
     during daytime, when ir is normally about 60, lo=12.75
     during direct sunlight, when ir is normally about 160, lo=14
     """
-    lo = 12 + ir/80.0
-    hi = lo + 10
-    return lo, hi
+    return 10.5, 22
 
 
 def mode(vals):
@@ -96,8 +94,11 @@ def find_spike(ir, window):
 
     spike_lo, spike_hi = spike_range(ir)
 
+    #print normalized_window
     # find values within the spike range
     possible_spike_vals = ''.join([ 'y' if spike_lo <= x <= spike_hi else 'n' for x, t in normalized_window ])
+    #print ir
+    #print spike_lo, spike_hi
     #print possible_spike_vals
 
     if 'yyy' not in possible_spike_vals:
