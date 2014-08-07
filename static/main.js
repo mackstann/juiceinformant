@@ -95,7 +95,7 @@ var day = d3.time.format("%w"),
 
 var color = d3.scale.quantize()
     .domain([10000, 85000])
-    .range(d3.range(4).map(function(d) { return "q" + d + "-11"; }));
+    .range(d3.range(10).map(function(d) { return "q" + d + "-11"; }));
 
 var svg = d3.select("#calendar").selectAll("svg")
     .data(d3.range(2014, (new Date()).getFullYear()+1))
