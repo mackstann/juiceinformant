@@ -10,3 +10,5 @@ argparse==1.2.1
 distribute==0.6.34
 itsdangerous==0.23
 wsgiref==0.1.2
+
+uWSGI==2.0.5.1
