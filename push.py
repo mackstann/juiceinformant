@@ -6,9 +6,10 @@ def send_batch(server_host, secret, batch):
     body = hashlib.sha256(secret + format(batch[0])).hexdigest() + "\n" + '\n'.join(map(format, batch))
     while True:
         try:
-            r = requests.post('http://{0}/logdata'.format(server_host), data=body, timeout=3)
+            r = requests.post('http://{0}/logdata'.format(server_host), data=body, timeout=60)
         except requests.exceptions.RequestException, e:
             print >>sys.stderr, e
+            time.sleep(1)
             continue
         else:
             if r.status_code >= 200 and r.status_code <= 204:
@@ -20,9 +21,10 @@ def send_batch(server_host, secret, batch):
 def get_remote_position(server_host):
     while True:
         try:
-            r = requests.get('http://{0}/logdata/latest-entry'.format(server_host), timeout=3)
+            r = requests.get('http://{0}/logdata/latest-entry'.format(server_host), timeout=5)
         except requests.exceptions.RequestException, e:
             print >>sys.stderr, e
+            time.sleep(1)
             continue
         else:
             if r.status_code >= 200 and r.status_code <= 204:
@@ -42,7 +44,6 @@ def run(server_host):
     # do a binary search to get close to the current position in the log. just
     # do it for 20 iterations and we'll be close enough.
     for i in range(20):
-        print pos
         chunk = f.read(30)
         pos += chunk.index('\n')
         f.seek(pos)
@@ -50,7 +51,6 @@ def run(server_host):
         if len(parts) < 2:
             continue
         ts = base64_to_timestamp(parts[1])
-        print repr(ts), repr(remote_pos)
         if ts < remote_pos:
             pos += (size - pos) / 2 # move forward
         elif ts > remote_pos:
@@ -60,7 +60,7 @@ def run(server_host):
         f.seek(pos)
 
     # back up a bit just in case
-    f.seek(pos - 100)
+    f.seek(max(0, pos - 100))
 
     buf = ''
 
@@ -80,7 +80,6 @@ def run(server_host):
         if not buf.endswith('\n'):
             continue
 
-        print buf
         t = base64_to_timestamp(buf.rstrip())
         buf = ''
 
@@ -89,20 +88,17 @@ def run(server_host):
             sys.stdout.flush()
             continue # the server already knows about this blink.
 
-        print 'new'
-
         # submit old timestamps in batches of 1000, but recent ones
         # immediately (batches of 1).
         batch_limit = 1000 if time.time() - t > 60 else 1
 
         batch.append(t)
         if len(batch) >= batch_limit:
-            print 'send'
+            print 'sending...'
             send_batch(server_host, secret, batch)
+            print 'done.'
             remote_pos = batch[-1]
             batch = []
-        else:
-            print 'building batch of', batch_limit
 
 if __name__ == '__main__':
     try:
