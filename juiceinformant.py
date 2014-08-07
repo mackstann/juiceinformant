@@ -5,6 +5,14 @@ from util import get_local_datetime_from_timestamp, format
 
 import os, datetime, hashlib, itertools
 
+
+# this configurability is not quite done yet
+charts = [
+    {'title': '10m', 'seconds': 60*10, 'resolution': 1000},
+    {'title': '24h', 'seconds': 60*60*24, 'resolution': 300},
+    {'title': '7d', 'seconds': 60*60*24*7, 'resolution': 500},
+]
+
 app = Flask(__name__, static_url_path='')
 redis = StrictRedis()
 
@@ -23,7 +31,7 @@ def static_file(filename):
 
 @app.route("/logdata/latest-entry", methods=["GET"])
 def latest_entry():
-    keys = sorted([ x for x in redis.keys('blinks-*') if not x.startswith('blinks-x100') ])
+    keys = sorted([ x for x in redis.keys('blinks-*') if not x.startswith('blinks-x') ])[-1:] # HERE not really though
     if not keys:
         return '0', 200
     latest_ts = redis.zrevrangebyscore(keys[0], '+inf', '-inf', withscores=True, start=0, num=1)[0][1]
@@ -40,32 +48,47 @@ def logdata():
 
     pipe = redis.pipeline()
     wh = 0
-    latest = float(redis.get('latest') or 0)
+    latest = float(latest_entry()[0])
+
+    print 'query existing Wh counts...'
     for ts in timestamps:
         pacific_dt = get_local_datetime_from_timestamp(float(ts))
-
         day = pacific_dt.strftime("%Y-%m-%d")
+        for modulo in [ c['modulo'] for c in charts ]:
+            if modulo not in (0, 1):
+                binned_timestamp = int(float(ts)) - int(float(ts)) % modulo
+                key = 'blinks-x{0}-'.format(modulo) + day
+                pipe.zrangebyscore(key, binned_timestamp, binned_timestamp, withscores=True)
 
-        redis.zadd('blinks-' + day, ts, ts + " 1")
+    print 'execute...'
+    existing = pipe.execute()
+    print 'done.'
 
-        m = 100
-        rounded = int(float(ts)) - int(float(ts)) % m
-        key = 'blinks-x{0}-'.format(m) + day
-        wh_count = 1
-        existing = redis.zrangebyscore(key, rounded, rounded, withscores=True)
-        if existing:
-            wh_count = int(existing[0][0].split()[1]) + 1
-            redis.zrem(key, existing[0][0])
-        redis.zadd(key, rounded, str(rounded) + ' ' + str(wh_count))
-
-        if ts > latest:
-            latest = ts
+    print 'save data...'
+    pipe = redis.pipeline()
+    i = 0
+    for ts in timestamps:
+        pacific_dt = get_local_datetime_from_timestamp(float(ts))
+        day = pacific_dt.strftime("%Y-%m-%d")
+        for modulo in [ c['modulo'] for c in charts ]:
+            if modulo in (0, 1):
+                pipe.zadd('blinks-' + day, ts, ts + " 1")
+            else:
+                binned_timestamp = int(float(ts)) - int(float(ts)) % modulo
+                key = 'blinks-x{0}-'.format(modulo) + day
+                wh_count = 1
+                if existing[i]:
+                    wh_count = int(existing[i][0][0].split()[1]) + 1
+                    pipe.zrem(key, existing[i][0][0])
+                pipe.zadd(key, binned_timestamp, str(binned_timestamp) + ' ' + str(wh_count))
+                i += 1
 
         wh += 1
 
-    redis.incrby('wh-' + day, wh)
-    redis.set('latest', latest)
+    pipe.incrby('wh-' + day, wh)
+    print 'execute...'
     pipe.execute()
+    print 'done.'
 
     # TODO:
     # * delete blinks older than 10m
@@ -73,14 +96,29 @@ def logdata():
 
     return '', 204
 
-@app.route("/logdata/cubism/start=<float:start>/stop=<float:stop>/step=<float:step>", methods=["GET"])
-def cubism(start, stop, step):
+for chart in charts:
+    # modulo of 0 or 1 means every blink is recorded discretely.
+    #
+    # modulo of 2 or more means blinks are aggregated into every N second bins.
+    # this is useful on longer time spans as it greatly reduces the number of
+    # records to churn through. it cuts down the level of detail to what is
+    # necessary (given the resolution requested), and no more.
+    chart['modulo'] = int(chart['seconds']/float(chart['resolution']))
+
+@app.route("/logdata/cubism/start=<float:start>/stop=<float:stop>/title=<title>", methods=["GET"])
+def cubism(start, stop, title):
     # get blinks from days other than today
     start_day = get_local_datetime_from_timestamp(start/1000.0).date()
     stop_day = get_local_datetime_from_timestamp(stop/1000.0).date()
 
     keys = []
-    prefix = 'blinks-x100-' if step > 10000 else 'blinks-'
+    prefix = 'blinks-'
+    # HERE
+    chart = [ c for c in charts if c['title'] == title][0]
+
+    if chart['modulo'] != 0:
+        prefix += 'x' + str(chart['modulo']) + '-'
+    print prefix
 
     while start_day <= stop_day:
         keys.append(prefix + start_day.strftime("%Y-%m-%d"))
@@ -88,7 +126,7 @@ def cubism(start, stop, step):
 
     records = list(itertools.chain(*(
         redis.zrangebyscore(key,
-            start/1000.0 - ((stop-start)*0.05)/1000.0,
+            start/1000.0 - ((stop-start)*0.05)/1000.0,# this might need to be sloppier on short time spans. and take modulo into account instead of stop-start.
             stop/1000.0, withscores=True)
         for key in keys
     )))
@@ -107,5 +145,5 @@ def calendar():
 
 if __name__ == "__main__":
     app.debug = True
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, threaded=True)
 

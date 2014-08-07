@@ -1,12 +1,12 @@
 /* JS for cubism chart */
 
-function horizon(name, seconds, height, selector)
+function horizon(title, seconds, height, selector)
 {
     var maxwatts = 12000;
 
     var context = cubism.context()
         .serverDelay(1 * 1000)
-        .clientDelay(1 * 1000)
+        .clientDelay(0.5 * 1000)
         .step((seconds*1000) / 1000) // ms per x-axis pixel
         .size(document.body.offsetWidth); // width in pixels
 
@@ -24,7 +24,7 @@ function horizon(name, seconds, height, selector)
 
     // the colored chart area
     d3.select(selector).selectAll(".horizon")
-        .data([metric(name)])
+        .data([metric(title)])
       .enter().insert("div", ".bottom")
         .attr("class", "horizon")
         .call(context.horizon()
@@ -38,14 +38,14 @@ function horizon(name, seconds, height, selector)
       d3.selectAll(".value").style("right", i == null ? null : context.size() - i + "px");
     });
 
-    function metric(metric_name) {
+    function metric(metric_title) {
         var watts = 0;
         var last_blink;
         return context.metric(function(start, stop, step, callback) {
             var start = +start;
             var stop = +stop;
             var values = [];
-            d3.json('/logdata/cubism/start=' + start.toFixed(6) + '/stop=' + stop.toFixed(6) + '/step=' + step.toFixed(6),
+            d3.json('/logdata/cubism/start=' + start.toFixed(6) + '/stop=' + stop.toFixed(6) + '/title=' + metric_title,
                 function(response) {
                     var data = response.d;
                     while(start < stop)
@@ -75,7 +75,7 @@ function horizon(name, seconds, height, selector)
                     callback(null, values);
                 }
             );
-        }, metric_name);
+        }, metric_title);
     }
 }
 horizon('10m', 60*10, 250, '#horizon1');
