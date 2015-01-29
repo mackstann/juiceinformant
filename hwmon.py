@@ -1,4 +1,4 @@
-import collections, datetime, itertools, sys, time
+import collections, time
 
 from Adafruit_I2C import Adafruit_I2C
 
@@ -74,12 +74,8 @@ class TSL2561:
 
 
 def spike_range(ir):
-    """
-    at night, when ir is normally about 0, lo=12
-    during daytime, when ir is normally about 60, lo=12.75
-    during direct sunlight, when ir is normally about 160, lo=14
-    """
-    return 10.5, 22
+    # these are magical values derived from experimentation.
+    return 10, 50
 
 
 def mode(vals):
