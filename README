@@ -25,10 +25,6 @@ On your RPi, install libraries:
 
 $ sudo apt-get install python-smbus
 $ pip install -r requirements.txt
-$ wget https://raw.github.com/seanbechhofer/raspberrypi/master/python/TSL2561.py
-
-(TSL2561.py has no proper license declaration, so I did not want to include it
-in my repository.)
 
 Setup i2c on the RPi:
 
