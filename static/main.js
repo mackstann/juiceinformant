@@ -2,12 +2,12 @@
 
 function horizon(title, seconds, height, selector)
 {
-    var maxwatts = 12000;
+    var maxwatts = 10000;
 
     var context = cubism.context()
         .serverDelay(1 * 1000)
         .clientDelay(0.5 * 1000)
-        .step((seconds*1000) / 1000) // ms per x-axis pixel
+        .step((seconds*1000) / document.body.offsetWidth) // ms per x-axis pixel
         .size(document.body.offsetWidth); // width in pixels
 
     // div elements: top axis and bottom axis. they contain time labels.
@@ -31,7 +31,7 @@ function horizon(title, seconds, height, selector)
           .extent([0, maxwatts])
           .format(d3.format("f"))
           .colors(['#000', '#000', '#000', '#000',
-                   '#cedb9c', '#b5cf6b', '#8ca252', '#637939' ])
+                   '#a2b444', '#ddbb26', '#e96d0b', '#bd1805' ])
           .height(height));
 
     context.on("focus", function(i) {
@@ -45,16 +45,15 @@ function horizon(title, seconds, height, selector)
             var start = +start;
             var stop = +stop;
             var values = [];
-            d3.json('/logdata/cubism/start=' + start.toFixed(6) + '/stop=' + stop.toFixed(6) + '/title=' + metric_title,
-                function(response) {
-                    var data = response.d;
+            d3.csv('/logdata/cubism/start=' + start.toFixed(6) + '/stop=' + stop.toFixed(6) + '/title=' + metric_title,
+                function(rows) {
                     while(start < stop)
                     {
-                        while(data.length && data[0][1]*1000 < start)
+                        while(rows.length && rows[0].Blah.split(' ')[0]*1000 < start)
                         {
-                            var record = data.shift();
-                            var ts = record[1]*1000;
-                            var wh = parseInt(record[0].split(' ')[1]);
+                            var record = rows.shift();
+                            var ts = record.Blah.split(' ')[0]*1000;
+                            var wh = parseInt(record.Blah.split(' ')[1]);
                             if(!isNaN(last_blink))
                             {
                                 if(ts <= last_blink)
@@ -71,16 +70,30 @@ function horizon(title, seconds, height, selector)
                         values.push(watts);
                         start += step;
                     }
-                    if (!data) return callback(new Error("unable to load data"));
+                    if (!rows) return callback(new Error("unable to load rows"));
                     callback(null, values);
                 }
             );
         }, metric_title);
     }
 }
+
 horizon('10m', 60*10, 250, '#horizon1');
 horizon('24h', 60*60*24, 90, '#horizon2');
 horizon('7d', 60*60*24*7, 90, '#horizon3');
+
+function hdd_for_temps(min, max)
+{
+    var base = 70;
+    if(min > base)
+        return 0;
+    if((max + min)/2.0 > base)
+        return (base - min)/4.0;
+    if(max >= base)
+        return (base - min)/2.0 - (max - min)/4.0;
+    if(max < base)
+        return base - (max + min)/2.0;
+}
 
 /* JS for calendar chart */
 
@@ -93,9 +106,27 @@ var day = d3.time.format("%w"),
     percent = d3.format(".1%"),
     format = d3.time.format("%Y-%m-%d");
 
+//var color = d3.scale.quantize()
+//    .domain([0, 85000])
+//    .range(d3.range(10).map(function(d) { return "q" + d + "-11"; }));
+
+var i = 0;
 var color = d3.scale.quantize()
-    .domain([10000, 85000])
-    .range(d3.range(10).map(function(d) { return "q" + d + "-11"; }));
+    .domain([0, 85000])
+    .range(d3.range(16, 224).map(function(d) {
+        // lightness is 25-50 
+        var r = d;
+        var g = d;
+        var b = d;
+        //console.log(r, g, b);
+        var hdd = i % 30;
+        r += hdd;
+        g -= hdd;
+        b -= hdd;
+        //console.log(r, g, b);
+        i++;
+        return 'rgb(' + r + ', ' + g + ', ' + b + ')';
+    }));
 
 var svg = d3.select("#calendar").selectAll("svg")
     .data(d3.range(2014, (new Date()).getFullYear()+1))
@@ -111,18 +142,22 @@ svg.append("text")
     .style("text-anchor", "middle")
     .text(function(d) { return d; });
 
-var rect = svg.selectAll(".day")
+var day_g = svg.selectAll(".day")
     .data(function(d) { return d3.time.days(new Date(d, 0, 1), new Date(d + 1, 0, 1)); })
-  .enter().append("rect")
+    .enter()
+    .append("g")
     .attr("class", "day")
+    .attr("transform", function(d) { return "translate(" + week(d) * cellSize + "," + day(d) * cellSize + ")"; })
     .attr("width", cellSize)
     .attr("height", cellSize)
-    .attr("x", function(d) { return week(d) * cellSize; })
-    .attr("y", function(d) { return day(d) * cellSize; })
     .datum(format);
+  
+  day_g.append("rect")
+    .attr("class", "day")
+    .attr("width", cellSize)
+    .attr("height", cellSize);
 
-rect.append("title")
-    .text(function(d) { return d; });
+day_g.append("title");
 
 svg.selectAll(".month")
     .data(function(d) { return d3.time.months(new Date(d, 0, 1), new Date(d + 1, 0, 1)); })
@@ -130,23 +165,76 @@ svg.selectAll(".month")
     .attr("class", "month")
     .attr("d", monthPath);
 
-d3.csv("/logdata/calendar").get(function(error, rows) {
-  var data = d3.nest()
-    .key(function(d) { return d.Date; })
-    .rollup(function(d) { return d[0].Wh; })
-    .map(rows);
+var hdd, cdd;
+d3.json("/hdd", function(error, json) {
+    if (error) return console.warn(error);
+    hdd = json;
 
-  var month_kwh = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    d3.json("/cdd", function(error, json) {
+        if (error) return console.warn(error);
+        cdd = json;
 
-  rect.filter(function(d) { return d in data; })
-    .attr("class", function(d) { return "day " + color(data[d]); })
-    .select("title")
-    .text(function(d) {
-        var parts = d.split('-');
-        var monthNames = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
-        var kwh = data[d]/1000;
-        return monthNames[parts[1]-1] + " " + parseInt(parts[2]) + ": " + kwh.toFixed(1) + 'kWh';
+        d3.csv("/logdata/calendar").get(function(error, rows) {
+          var data = d3.nest()
+            .key(function(d) { return d.Date; })
+            .rollup(function(d) { return d[0].Wh; })
+            .map(rows);
+
+          var month_kwh = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+          var fill_color_by_hdd_cdd = function (starting_value, d)
+          {
+                var r = starting_value;
+                var g = starting_value;
+                var b = starting_value;
+                var net_hdd = (hdd[d] || 0) - (cdd[d] || 0);
+                var toInt = function(x) { return x | 0; };
+                if(net_hdd > 0)
+                {
+                    r -= toInt(net_hdd*6);
+                    g -= toInt(net_hdd*5);
+                    b += toInt(net_hdd*6);
+                }
+                else if(net_hdd < 0)
+                {
+                    r += toInt(Math.abs(net_hdd)*6);
+                    g -= toInt(Math.abs(net_hdd)*5);
+                    b -= toInt(Math.abs(net_hdd)*6);
+                }
+                r = Math.min(255, Math.max(0, r));
+                g = Math.min(255, Math.max(0, g));
+                b = Math.min(255, Math.max(0, b));
+                return 'fill: rgb(' + r + ', ' + g + ', ' + b + ');';
+          };
+
+          day_g.select("g.day > rect")
+            //.attr("class", function(d) { return "day " + color(data[d]); })
+            .attr("style", function(d) { return fill_color_by_hdd_cdd(255, d); });
+
+            day_g.filter(function(d) { return d in data; })
+                .select("title")
+                .text(function(d) {
+                    var parts = d.split('-');
+                    var monthNames = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
+                    var kwh = data[d]/1000;
+                    return monthNames[parts[1]-1] + " " + parseInt(parts[2]) + ": " + kwh.toFixed(1) + 'kWh';
+                });
+
+            day_g.filter(function(d) { return d in data; })
+                .append("circle")
+                    .attr("style", function(d) { return fill_color_by_hdd_cdd(128, d); })
+                    .attr("cx", function(d) { return cellSize/2; })
+                    .attr("cy", function(d) { return cellSize/2; })
+                    .attr("r", function (d) {
+                        var scaled = data[d]/85000.0;
+                        var max_volume = 3.14 * Math.pow(cellSize/2.0, 2);
+                        var volume = max_volume * scaled;
+                        var radius = Math.sqrt(volume/3.14);
+                        return radius;
+                    });
+
+        });
     });
 });
 

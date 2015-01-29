@@ -32,35 +32,38 @@ def get_remote_position(server_host):
             print "HTTP {0}".format(r.status_code)
             continue
 
-def run(server_host):
+def run(server_host, filename):
     batch = []
     remote_pos = get_remote_position(server_host)
-    size = os.path.getsize('blink-log')
-    f = file('blink-log', 'r')
+    size = os.path.getsize(filename)
+    f = file(filename, 'r')
 
     # catch up
-    closest_match = None
-    pos = 0
+    search_begin = 0
+    search_end = size
     # do a binary search to get close to the current position in the log. just
     # do it for 20 iterations and we'll be close enough.
     for i in range(20):
-        chunk = f.read(30)
-        pos += chunk.index('\n')
+        print (search_begin, search_end)
+        pos = int(search_begin + (search_end - search_begin) / 2.0)
         f.seek(pos)
+        chunk = f.read(50)
+        pos += chunk.index('\n')
         parts = chunk.split()
-        if len(parts) < 2:
+        if len(parts) < 2: # went too far; this is the end
+            search_end = min(size, pos + len(chunk))
             continue
         ts = base64_to_timestamp(parts[1])
         if ts < remote_pos:
-            pos += (size - pos) / 2 # move forward
+            search_begin = pos
         elif ts > remote_pos:
-            pos /= 2 # move backward
+            search_end = pos + len(parts[1])
         else:
             break
-        f.seek(pos)
 
     # back up a bit just in case
     f.seek(max(0, pos - 100))
+    print 'final seek to {} out of {}'.format(max(0, pos - 100), size)
 
     buf = ''
 
@@ -74,6 +77,7 @@ def run(server_host):
     while True:
         buf += f.read(1)
         if not buf:
+            time.sleep(1)
             select.select([f], [], [])
             continue
 
@@ -84,7 +88,7 @@ def run(server_host):
         buf = ''
 
         if t <= float(remote_pos):
-            print '.',
+            print 'skipping {}...'.format(t)
             sys.stdout.flush()
             continue # the server already knows about this blink.
 
@@ -102,6 +106,6 @@ def run(server_host):
 
 if __name__ == '__main__':
     try:
-        run(sys.argv[1])
+        run(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else 'blink-log')
     except KeyboardInterrupt:
         pass
