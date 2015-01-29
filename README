@@ -5,6 +5,11 @@ prepared to work through some bugs. It's useable, if you're brave.
 
 SETUP
 
+First you need to wire up a TSL2561 sensor (I use the one from Ada Fruit) to
+your Raspberry Pi's i2c ports (TODO: wiring instructions). This sensor should
+be taped or otherwised attached to your electric meter, right over the blinking
+IR LED (TODO: how to check meter compatibility).
+
 These instructions refer to the Raspberry Pi and your web server as two
 different computers, but they can be one in the same if you want.
 
@@ -30,10 +35,7 @@ Setup i2c on the RPi:
 https://learn.adafruit.com/adafruits-raspberry-pi-lesson-4-gpio-setup/configuring-i2c
 
 Make i2c accessible without using root:
-sudo chmod a+rw /dev/i2c-*
-sudo crontab -e
-@reboot chmod a+rw /dev/i2c-*
-Save and quit.
+$ sudo adduser yourusername i2c
 
 Now create a file in this project directory, called "secret", and type some
 gibberish into it. This is the password that prevents anyone from submitting
@@ -78,15 +80,32 @@ It may also complain with error messages if it can't connect, or the server is
 giving it an unexpected response, etc. You can just leave it running and it'll
 recover once the problems are resolved.
 
+Now, stop all those processes, install supervisord.conf, and use the included
+supervisord.conf (after editing the "/home/nick" and username "nick" to
+something appropriate for you) to run them all:
+
+$ supervisord -c juiceinformant/supervisord.conf
+
+This above file assumes you're running everything just on one machine (contrary
+to the rest of the instructions). If you want to run on two separate machines,
+just set up supervisord on each machine and delete the jobs that aren't
+applicable to each machine. On the RPi, you need hwmon.py and push.py running.
+On the web server you need uwsgi running.
+
+Set up a crontab for your user (run crontab -e) with these two jobs:
+
+@reboot supervisord -c juiceinformant/supervisord.conf
+0 5 * * * cd juiceinformant; source env/bin/activate; python juiceinformant.py --update-dd
+
+This will make sure everything runs at boot in the future, and it will fetch
+the heating/cooling degree day data for the previous day early every morning
+(TODO: figure out when this file actually gets updated)
+
 You can delete and re-build the Redis database trivially; just run "redis-cli
 flushdb" on the web server to delete it, restart push.py afterwards and it'll
 push all the old log data to repopulate Redis. However, the blink-log file is
 irreplaceable. It is the canonical place where the log data lives. If you want
 to have a backup of your data, then backup blink-log regularly.
-
-EXERCISES LEFT FOR THE READER
-
-You will want to set up all of these scripts to run at boot.
 
 The log file will grow up to maybe a hundred MB per year depending on your
 electricity usage. After a long time it might become a disk space hog,
