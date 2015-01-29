@@ -87,6 +87,10 @@ def find_spike(ir, window):
     normalized_window = [ (x-lowest, t) for x, t in window ]
     # lowest value is now 0; all other values have been decreased by the same
     # amount needed to do that.
+    #if [ x[0] for x in window ] != [0]*len(window):
+    #    print [ x[0] for x in window ]
+    #    print [ x[0] for x in normalized_window ]
+    #    print
 
     spike_lo, spike_hi = spike_range(ir)
 
@@ -150,14 +154,15 @@ def find_spike(ir, window):
 def run():
     tsl = TSL2561()
     was_spiking = False
+    import sys
 
     with open("blink-log", "a") as f:
         while True:
             ts, ir, state = tsl.check_state()
             if state == True and was_spiking == False: # mark the beginning of the blink
-                print 'blink'
-                f.write(timestamp_to_base64(ts) + "\n") # deciseconds
+                f.write(timestamp_to_base64(ts) + "\n")
                 f.flush()
+            sys.stdout.flush()
             was_spiking = state
 
 
