@@ -1,3 +1,6 @@
+Screenshot
+==========
+
 ![Screenshot](screenshot.png)
 
 NOTE
@@ -6,8 +9,8 @@ NOTE
 This project is still under development and is not ready to use unless you're
 prepared to work through some bugs. It's useable, if you're brave.
 
-SETUP
-====
+Setup
+=====
 
 First you need to wire up a TSL2561 sensor (I use the one from Ada Fruit) to
 your Raspberry Pi's i2c ports (TODO: wiring instructions). This sensor should
