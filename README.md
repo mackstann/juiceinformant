@@ -1,9 +1,13 @@
+![Screenshot](screenshot.png)
+
 NOTE
+====
 
 This project is still under development and is not ready to use unless you're
 prepared to work through some bugs. It's useable, if you're brave.
 
 SETUP
+====
 
 First you need to wire up a TSL2561 sensor (I use the one from Ada Fruit) to
 your Raspberry Pi's i2c ports (TODO: wiring instructions). This sensor should
@@ -23,15 +27,16 @@ into your virtualenv.
 
 On your RPi, install libraries:
 
-$ sudo apt-get install python-smbus
-$ pip install -r requirements.txt
+    $ sudo apt-get install python-smbus
+    $ pip install -r requirements.txt
 
 Setup i2c on the RPi:
 
 https://learn.adafruit.com/adafruits-raspberry-pi-lesson-4-gpio-setup/configuring-i2c
 
 Make i2c accessible without using root:
-$ sudo adduser yourusername i2c
+
+    $ sudo adduser yourusername i2c
 
 Now create a file in this project directory, called "secret", and type some
 gibberish into it. This is the password that prevents anyone from submitting
@@ -40,37 +45,39 @@ bogus data to your server.
 *If* you have a separate web server, copy the project to that server, and
 install libraries on it:
 
-$ rsync -va ./ user@server:juiceinformant/
-$ ssh user@webserverhost
-$ sudo apt-get install build-essential python-dev
+    $ rsync -va ./ user@server:juiceinformant/
+    $ ssh user@webserverhost
+    $ sudo apt-get install build-essential python-dev
 
 If using virtualenv, activate your env, then:
-$ pip install -r requirements.txt
+
+    $ pip install -r requirements.txt
 
 If not using virtualenv:
-$ sudo pip install -r requirements.txt
+
+    $ sudo pip install -r requirements.txt
 
 Now install redis on the web server and start it up.
 
-$ sudo apt-get install redis-server
+    $ sudo apt-get install redis-server
 
 Start up the Flask/uwsgi server on the web server:
 
-$ uwsgi --http 0.0.0.0:5000 --master -w juiceinformant:app --processes 4
+    $ uwsgi --http 0.0.0.0:5000 --master -w juiceinformant:app --processes 4
 
 Back on the RPi, start up the hardware monitoring script as root:
 
-$ python hwmon.py
+    $ python hwmon.py
 
 This is now logging to a file called blink-log. The other script to run on the
 RPi will read from this log file and continually try to send updates to the
 web server:
 
-$ python push.py localhost:5000
+    $ python push.py localhost:5000
 
 It should say stuff like this:
 
-Sent batch[1]: 1381518599.379515...1381518599.379515
+    Sent batch[1]: 1381518599.379515...1381518599.379515
 
 It may also complain with error messages if it can't connect, or the server is
 giving it an unexpected response, etc. You can just leave it running and it'll
@@ -80,7 +87,7 @@ Now, stop all those processes, install supervisord.conf, and use the included
 supervisord.conf (after editing the "/home/nick" and username "nick" to
 something appropriate for you) to run them all:
 
-$ supervisord -c juiceinformant/supervisord.conf
+    $ supervisord -c juiceinformant/supervisord.conf
 
 This above file assumes you're running everything just on one machine (contrary
 to the rest of the instructions). If you want to run on two separate machines,
@@ -90,8 +97,8 @@ On the web server you need uwsgi running.
 
 Set up a crontab for your user (run crontab -e) with these two jobs:
 
-@reboot supervisord -c juiceinformant/supervisord.conf
-0 5 * * * cd juiceinformant; source env/bin/activate; python juiceinformant.py --update-dd
+    @reboot supervisord -c juiceinformant/supervisord.conf
+    0 5 * * * cd juiceinformant; source env/bin/activate; python juiceinformant.py --update-dd
 
 This will make sure everything runs at boot in the future, and it will fetch
 the heating/cooling degree day data for the previous day early every morning
